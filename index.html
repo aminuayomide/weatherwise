@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeatherWise - Dynamic Background</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      overflow-x: hidden;
+    }
+    .app-container {
+      position: relative;
+      z-index: 10;
+    }
+    .weather-card, .weather-card-light {
+      backdrop-filter: blur(10px);
+      border-radius: 1.5rem;
+    }
+    .weather-card { background-color: rgba(255, 255, 255, 0.2); }
+    .weather-card-light { background-color: rgba(255, 255, 255, 0.4); }
+
+    .weather-icon { width: 80px; height: 80px; animation: pulse 2s infinite ease-in-out; }
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+    .loader {
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top: 4px solid #fff;
+      border-radius: 50%;
+      width: 40px; height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* Background animations container */
+    #bgAnimations {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .bg-layer {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    }
+
+    /* Dynamic backgrounds */
+    .bg-clear { background: linear-gradient(135deg, #FFFACD, #FFD700); }
+    .bg-clouds { background: linear-gradient(135deg, #B0C4DE, #778899); }
+    .bg-rain { background: linear-gradient(135deg, #4682B4, #2F4F4F); }
+    .bg-snow { background: linear-gradient(135deg, #E6F0F5, #B0C4DE); }
+    .bg-storm { background: linear-gradient(135deg, #36454F, #1C1C1C); }
+    .bg-haze { background: linear-gradient(135deg, #C0C0C0, #808080); }
+
+    /* Animations */
+    .clouds { 
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" opacity="0.3"><path fill="%23FFFFFF" d="M72.95,49.25c-0.65-11.23-10.4-20.27-21.65-20.27c-9.2,0-17.15,6-20.4,14.5c-3.15-0.75-6.55-1.1-10.15-1.1c-10.85,0-19.6,8.75-19.6,19.6s8.75,19.6,19.6,19.6h52.85c10.45,0,18.9-8.45,18.9-18.9C92.95,57.7,83.4,49.25,72.95,49.25z"/></svg>');
+      background-repeat: repeat; animation: moveClouds 60s linear infinite; opacity: 0.4;
+    }
+    @keyframes moveClouds { from { background-position: 0 0; } to { background-position: 10000px 0; } }
+
+    .rain { 
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" opacity="0.4"><path fill="%23FFFFFF" d="M50,15 L50,85 M20,25 L20,95 M80,25 L80,95 M35,10 L35,80 M65,10 L65,80 M10,40 L10,110" stroke="%23FFFFFF" stroke-width="2" stroke-linecap="round"/></svg>');
+      animation: fallRain 1s linear infinite;
+    }
+    @keyframes fallRain { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+
+    .snow {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" opacity="0.4"><circle fill="%23FFFFFF" cx="50" cy="50" r="2"/><circle fill="%23FFFFFF" cx="20" cy="80" r="1.5"/><circle fill="%23FFFFFF" cx="80" cy="30" r="2.5"/><circle fill="%23FFFFFF" cx="10" cy="50" r="1"/><circle fill="%23FFFFFF" cx="90" cy="70" r="2.2"/></svg>');
+      background-repeat: repeat; animation: fallSnow 20s linear infinite;
+    }
+    @keyframes fallSnow { 0% { background-position: 0 0; } 100% { background-position: 0 10000px; } }
+
+    .storm {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" opacity="0.2"><path fill="%23FFFFFF" d="M60,10 L25,45 L45,45 L40,75 L75,40 L55,40 L60,10z"/></svg>');
+      background-repeat: no-repeat; background-size: cover; opacity: 0.3;
+      animation: lightning 3s linear infinite;
+    }
+    @keyframes lightning { 0%,100%{opacity:0;} 5%,15%{opacity:0.3;} 10%{opacity:0;} }
+
+    /* Mobile Adjustments */
+    @media (max-width: 640px) {
+      .weather-icon { width: 60px; height: 60px; }
+      .text-7xl { font-size: 3rem; }
+      .text-4xl { font-size: 2rem; }
+      .app-container { padding: 4px; }
+      #forecastContainer { grid-template-columns: repeat(2,1fr) !important; }
+      input#cityInput, button#searchBtn { font-size: 14px; padding: 0.5rem; }
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white relative overflow-hidden">
+  <!-- Background animation container -->
+  <div id="bgAnimations"></div>
+
+  <div id="app" class="min-h-screen flex flex-col items-center justify-center p-4 transition-all duration-500 relative">
+    <div class="app-container max-w-2xl w-full p-8 rounded-3xl shadow-2xl relative overflow-hidden transition-all duration-300 ease-in-out weather-card z-10">
+      <h1 class="text-3xl font-bold mb-6 text-center">WeatherWise</h1>
+
+      <div class="flex flex-col sm:flex-row items-center gap-4 mb-8 w-full">
+        <input type="text" id="cityInput" placeholder="Enter city name..." class="flex-1 p-3 rounded-xl border border-transparent focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 bg-gray-800 text-white placeholder-gray-400">
+        <button id="searchBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 shadow-md transform hover:scale-105">
+          Search
+        </button>
+        <div class="flex items-center space-x-2 ml-auto mt-2 sm:mt-0">
+          <span id="tempUnitDisplay" class="text-lg">°C</span>
+          <button id="unitToggle" class="relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 bg-gray-600" role="switch" aria-checked="false">
+            <span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 translate-x-0"></span>
+          </button>
+        </div>
+      </div>
+
+      <div id="loading" class="flex justify-center items-center h-48 hidden">
+        <div class="loader"></div>
+      </div>
+
+      <div id="weatherInfo" class="text-center transition-all duration-500 ease-in-out opacity-0">
+        <h2 id="cityName" class="text-4xl font-semibold"></h2>
+        <div class="mt-4 flex flex-col sm:flex-row items-center justify-center gap-6">
+          <div id="weatherIconContainer" class="flex-shrink-0"></div>
+          <div>
+            <p id="temp" class="text-7xl font-bold mt-2 mb-2"></p>
+            <p id="description" class="text-xl capitalize"></p>
+            <div class="text-md mt-2 space-x-4">
+              <span id="feelsLike"></span>
+              <span id="humidity"></span>
+              <span id="windSpeed"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="forecast" class="mt-8 transition-all duration-500 ease-in-out opacity-0">
+        <h3 class="text-2xl font-bold mb-4">5-Day Forecast</h3>
+        <div id="forecastContainer" class="grid grid-cols-2 sm:grid-cols-5 gap-4"></div>
+      </div>
+
+      <div id="errorMessage" class="hidden text-center text-red-400 mt-6">
+        <p>City not found. Please try again with a more specific name (e.g., 'New York City') or check your spelling.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_KEY = 'e3db574a15592bf172dd4dc1b1686d08';
+    const app = document.getElementById('app');
+    const bgAnimations = document.getElementById('bgAnimations');
+    const cityInput = document.getElementById('cityInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const loading = document.getElementById('loading');
+    const weatherInfo = document.getElementById('weatherInfo');
+    const forecast = document.getElementById('forecast');
+    const errorMessage = document.getElementById('errorMessage');
+    const unitToggle = document.getElementById('unitToggle');
+    const tempUnitDisplay = document.getElementById('tempUnitDisplay');
+    let isCelsius = true;
+
+    searchBtn.addEventListener('click', () => { const city = cityInput.value; if(city) fetchWeather(city); });
+    cityInput.addEventListener('keypress', e => { if(e.key==='Enter') searchBtn.click(); });
+    unitToggle.addEventListener('click', () => { isCelsius=!isCelsius; updateUnitToggle(); const city = document.getElementById('cityName').textContent; if(city) fetchWeather(city); });
+
+    window.onload = () => {
+      if(navigator.geolocation){ navigator.geolocation.getCurrentPosition(pos=>fetchWeatherByCoords(pos.coords.latitude,pos.coords.longitude),()=>fetchWeather('London')); }
+      else fetchWeather('London');
+    };
+
+    async function fetchWeather(city){ showLoading(); errorMessage.classList.add('hidden'); try{
+      const [currentRes, forecastRes] = await Promise.all([
+        fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`),
+        fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric`)
+      ]);
+      if(!currentRes.ok||!forecastRes.ok) throw new Error('City not found');
+      const currentData = await currentRes.json(); const forecastData = await forecastRes.json();
+      displayCurrentWeather(currentData); displayForecast(forecastData);
+    } catch{ hideLoading(); errorMessage.classList.remove('hidden'); } }
+
+    async function fetchWeatherByCoords(lat,lon){ showLoading(); try{
+      const [currentRes, forecastRes] = await Promise.all([
+        fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`),
+        fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`)
+      ]);
+      const currentData = await currentRes.json(); const forecastData = await forecastRes.json();
+      displayCurrentWeather(currentData); displayForecast(forecastData);
+    } catch{ hideLoading(); errorMessage.classList.remove('hidden'); } }
+
+    function displayCurrentWeather(data){
+      const { name, main, weather, wind }=data;
+      const temp = isCelsius?Math.round(main.temp):Math.round(main.temp*9/5+32);
+      const feelsLike = isCelsius?Math.round(main.feels_like):Math.round(main.feels_like*9/5+32);
+      const unitSymbol=isCelsius?'°C':'°F';
+      document.getElementById('cityName').textContent=name;
+      document.getElementById('temp').textContent=`${temp}${unitSymbol}`;
+      document.getElementById('description').textContent=weather[0].description;
+      document.getElementById('feelsLike').textContent=`Feels like: ${feelsLike}${unitSymbol}`;
+      document.getElementById('humidity').textContent=`Humidity: ${main.humidity}%`;
+      document.getElementById('windSpeed').textContent=`Wind: ${Math.round(wind.speed)} m/s`;
+      updateWeatherIcon(weather[0].main);
+      updateBackground(weather[0].main);
+      hideLoading();
+      weatherInfo.classList.remove('opacity-0');
+      forecast.classList.remove('opacity-0');
+    }
+
+    function displayForecast(data){
+      const container=document.getElementById('forecastContainer'); container.innerHTML='';
+      const daily=data.list.filter(item=>item.dt_txt.includes('12:00:00'));
+      daily.forEach(item=>{
+        const date=new Date(item.dt*1000);
+        const day=date.toLocaleDateString('en-US',{weekday:'short'});
+        const temp=isCelsius?Math.round(item.main.temp):Math.round(item.main.temp*9/5+32);
+        const unitSymbol=isCelsius?'°C':'°F';
+        const div=document.createElement('div');
+        div.className='text-center p-4 rounded-xl weather-card-light';
+        div.innerHTML=`
+          <p class="font-bold">${day}</p>
+          <div class="mt-2"><i data-lucide="${getLucideIcon(item.weather[0].main)}" class="w-12 h-12 mx-auto"></i></div>
+          <p class="mt-2 text-xl font-semibold">${temp}${unitSymbol}</p>
+          <p class="text-sm capitalize">${item.weather[0].description}</p>
+        `;
+        container.appendChild(div);
+      });
+      lucide.createIcons();
+    }
+
+    function updateBackground(condition){
+      bgAnimations.innerHTML='';
+      let layer=document.createElement('div'); layer.className='bg-layer';
+      switch(condition){
+        case 'Clear': layer.classList.add('bg-clear'); break;
+        case 'Clouds': layer.classList.add('bg-clouds','clouds'); break;
+        case 'Rain': case 'Drizzle': layer.classList.add('bg-rain','rain'); break;
+        case 'Thunderstorm': layer.classList.add('bg-storm','storm'); break;
+        case 'Snow': layer.classList.add('bg-snow','snow'); break;
+        case 'Mist': case 'Smoke': case 'Haze': case 'Dust': case 'Fog': case 'Sand': case 'Ash': layer.classList.add('bg-haze'); break;
+        default: layer.classList.add('bg-clouds','clouds'); break;
+      }
+      bgAnimations.appendChild(layer);
+    }
+
+    function updateWeatherIcon(condition){ const container=document.getElementById('weatherIconContainer'); container.innerHTML=`<i data-lucide="${getLucideIcon(condition)}" class="weather-icon mx-auto"></i>`; lucide.createIcons(); }
+    function getLucideIcon(condition){ switch(condition){ case 'Clear': return 'sun'; case 'Clouds': return 'cloud'; case 'Rain': case 'Drizzle': return 'cloud-rain'; case 'Thunderstorm': return 'cloud-lightning'; case 'Snow': return 'snowflake'; case 'Mist': case 'Smoke': case 'Haze': case 'Dust': case 'Fog': case 'Sand': case 'Ash': return 'cloud-fog'; default: return 'cloud'; } }
+    function showLoading(){ loading.classList.remove('hidden'); weatherInfo.classList.add('opacity-0'); forecast.classList.add('opacity-0'); }
+    function hideLoading(){ loading.classList.add('hidden'); lucide.createIcons(); }
+    function updateUnitToggle(){ const span=unitToggle.querySelector('span'); if(isCelsius){ span.classList.remove('translate-x-5'); tempUnitDisplay.textContent='°C'; } else{ span.classList.add('translate-x-5'); tempUnitDisplay.textContent='°F'; } }
+  </script>
+</body>
+</html>
