@@ -13,10 +13,14 @@
       font-family: 'Inter', sans-serif;
       margin: 0;
       overflow-x: hidden;
+      overflow-y: auto; /* allow vertical scrolling */
     }
     .app-container {
       position: relative;
       z-index: 10;
+      flex-direction: column;
+      justify-content: flex-start;
+      padding: 1rem;
     }
     .weather-card, .weather-card-light {
       backdrop-filter: blur(10px);
@@ -37,9 +41,8 @@
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* Background animations container */
     #bgAnimations {
-      position: absolute;
+      position: fixed; /* changed to fixed to scroll content over it */
       top: 0; left: 0;
       width: 100%; height: 100%;
       z-index: 0;
@@ -49,7 +52,6 @@
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     }
 
-    /* Dynamic backgrounds */
     .bg-clear { background: linear-gradient(135deg, #FFFACD, #FFD700); }
     .bg-clouds { background: linear-gradient(135deg, #B0C4DE, #778899); }
     .bg-rain { background: linear-gradient(135deg, #4682B4, #2F4F4F); }
@@ -57,7 +59,6 @@
     .bg-storm { background: linear-gradient(135deg, #36454F, #1C1C1C); }
     .bg-haze { background: linear-gradient(135deg, #C0C0C0, #808080); }
 
-    /* Animations */
     .clouds { 
       background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" opacity="0.3"><path fill="%23FFFFFF" d="M72.95,49.25c-0.65-11.23-10.4-20.27-21.65-20.27c-9.2,0-17.15,6-20.4,14.5c-3.15-0.75-6.55-1.1-10.15-1.1c-10.85,0-19.6,8.75-19.6,19.6s8.75,19.6,19.6,19.6h52.85c10.45,0,18.9-8.45,18.9-18.9C92.95,57.7,83.4,49.25,72.95,49.25z"/></svg>');
       background-repeat: repeat; animation: moveClouds 60s linear infinite; opacity: 0.4;
@@ -83,22 +84,20 @@
     }
     @keyframes lightning { 0%,100%{opacity:0;} 5%,15%{opacity:0.3;} 10%{opacity:0;} }
 
-    /* Mobile Adjustments */
     @media (max-width: 640px) {
       .weather-icon { width: 60px; height: 60px; }
       .text-7xl { font-size: 3rem; }
       .text-4xl { font-size: 2rem; }
-      .app-container { padding: 4px; }
+      .app-container { padding: 0.5rem; }
       #forecastContainer { grid-template-columns: repeat(2,1fr) !important; }
       input#cityInput, button#searchBtn { font-size: 14px; padding: 0.5rem; }
     }
   </style>
 </head>
-<body class="bg-gray-900 text-white relative overflow-hidden">
-  <!-- Background animation container -->
+<body class="bg-gray-900 text-white relative">
   <div id="bgAnimations"></div>
 
-  <div id="app" class="min-h-screen flex flex-col items-center justify-center p-4 transition-all duration-500 relative">
+  <div id="app" class="min-h-screen flex flex-col items-center p-4 transition-all duration-500 relative">
     <div class="app-container max-w-2xl w-full p-8 rounded-3xl shadow-2xl relative overflow-hidden transition-all duration-300 ease-in-out weather-card z-10">
       <h1 class="text-3xl font-bold mb-6 text-center">WeatherWise</h1>
 
@@ -236,35 +235,61 @@
         case 'Clouds': layer.classList.add('bg-clouds','clouds'); break;
         case 'Rain': case 'Drizzle': layer.classList.add('bg-rain','rain'); break;
         case 'Thunderstorm': layer.classList.add('bg-storm','storm'); break;
-        case 'Snow': layer.classList.add('bg-snow','snow'); break;
-        case 'Mist': case 'Smoke': case 'Haze': case 'Dust': case 'Fog': case 'Sand': case 'Ash': layer.classList.add('bg-haze'); break;
-        default: layer.classList.add('bg-clouds','clouds'); break;
+                case 'Snow': layer.classList.add('bg-snow','snow'); break;
+        case 'Haze': case 'Mist': case 'Fog': layer.classList.add('bg-haze'); break;
+        default: layer.classList.add('bg-clear'); break;
       }
       bgAnimations.appendChild(layer);
     }
 
-    function updateWeatherIcon(condition){ const container=document.getElementById('weatherIconContainer'); container.innerHTML=`<i data-lucide="${getLucideIcon(condition)}" class="weather-icon mx-auto"></i>`; lucide.createIcons(); }
-    function getLucideIcon(condition){ switch(condition){ case 'Clear': return 'sun'; case 'Clouds': return 'cloud'; case 'Rain': case 'Drizzle': return 'cloud-rain'; case 'Thunderstorm': return 'cloud-lightning'; case 'Snow': return 'snowflake'; case 'Mist': case 'Smoke': case 'Haze': case 'Dust': case 'Fog': case 'Sand': case 'Ash': return 'cloud-fog'; default: return 'cloud'; } }
+    function updateWeatherIcon(condition){
+      const container=document.getElementById('weatherIconContainer'); container.innerHTML='';
+      const iconName=getLucideIcon(condition);
+      const icon=document.createElement('i'); icon.setAttribute('data-lucide',iconName);
+      icon.className='weather-icon';
+      container.appendChild(icon);
+      lucide.createIcons();
+    }
+
+    function getLucideIcon(condition){
+      switch(condition){
+        case 'Clear': return 'Sun';
+        case 'Clouds': return 'Cloud';
+        case 'Rain': case 'Drizzle': return 'CloudRain';
+        case 'Thunderstorm': return 'Zap';
+        case 'Snow': return 'CloudSnow';
+        case 'Haze': case 'Mist': case 'Fog': return 'CloudFog';
+        default: return 'Sun';
+      }
+    }
+
     function showLoading(){ loading.classList.remove('hidden'); weatherInfo.classList.add('opacity-0'); forecast.classList.add('opacity-0'); }
-    function hideLoading(){ loading.classList.add('hidden'); lucide.createIcons(); }
-    function updateUnitToggle(){ const span=unitToggle.querySelector('span'); if(isCelsius){ span.classList.remove('translate-x-5'); tempUnitDisplay.textContent='°C'; } else{ span.classList.add('translate-x-5'); tempUnitDisplay.textContent='°F'; } }
-    function updateFavicon(condition) {
-  const favicon = document.getElementById('favicon');
-  switch(condition) {
-    case 'Clear':
-      favicon.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='5' fill='%23FFD700'/><g stroke='%23FFA500' stroke-width='2'><line x1='12' y1='1' x2='12' y2='4'/><line x1='12' y1='20' x2='12' y2='23'/><line x1='1' y1='12' x2='4' y2='12'/><line x1='20' y1='12' x2='23' y2='12'/><line x1='4.22' y1='4.22' x2='6.34' y2='6.34'/><line x1='17.66' y1='17.66' x2='19.78' y2='19.78'/><line x1='4.22' y1='19.78' x2='6.34' y2='17.66'/><line x1='17.66' y1='6.34' x2='19.78' y2='4.22'/></g></svg>";
-      break;
-    case 'Clouds':
-      favicon.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23B0C4DE' d='M19 18H6c-2.21 0-4-1.79-4-4s1.79-4 4-4h1.26c.44-1.17 1.55-2 2.74-2 1.66 0 3 1.34 3 3h1.26c1.66 0 3 1.34 3 3s-1.34 3-3 3z'/></svg>";
-      break;
-    case 'Rain':
-    case 'Drizzle':
-      favicon.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%234682B4' d='M19 18H6c-2.21 0-4-1.79-4-4s1.79-4 4-4h1.26c.44-1.17 1.55-2 2.74-2 1.66 0 3 1.34 3 3h1.26c1.66 0 3 1.34 3 3s-1.34 3-3 3z'/><line x1='8' y1='20' x2='8' y2='22' stroke='%23007BFF' stroke-width='2'/><line x1='12' y1='20' x2='12' y2='22' stroke='%23007BFF' stroke-width='2'/><line x1='16' y1='20' x2='16' y2='22' stroke='%23007BFF' stroke-width='2'/></svg>";
-      break;
-    default:
-      favicon.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23B0C4DE' d='M19 18H6c-2.21 0-4-1.79-4-4s1.79-4 4-4h1.26c.44-1.17 1.55-2 2.74-2 1.66 0 3 1.34 3 3h1.26c1.66 0 3 1.34 3 3s-1.34 3-3 3z'/></svg>";
-  }
-}
+    function hideLoading(){ loading.classList.add('hidden'); weatherInfo.classList.remove('opacity-0'); forecast.classList.remove('opacity-0'); }
+
+    function updateUnitToggle(){
+      const toggleSpan=unitToggle.querySelector('span');
+      if(isCelsius){
+        toggleSpan.classList.remove('translate-x-5'); toggleSpan.classList.add('translate-x-0');
+        tempUnitDisplay.textContent='°C';
+      } else {
+        toggleSpan.classList.remove('translate-x-0'); toggleSpan.classList.add('translate-x-5');
+        tempUnitDisplay.textContent='°F';
+      }
+    }
+
+    function updateFavicon(condition){
+      const favicon=document.getElementById('favicon');
+      let color='#FFD700';
+      if(condition==='Clear') color='#FFD700';
+      else if(condition==='Clouds') color='#B0C4DE';
+      else if(condition==='Rain'||condition==='Drizzle') color='#4682B4';
+      else if(condition==='Thunderstorm') color='#36454F';
+      else if(condition==='Snow') color='#E6F0F5';
+      else color='#C0C0C0';
+      favicon.setAttribute('href',`data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="${color}"/></svg>`);
+    }
   </script>
 </body>
 </html>
+
+       
